@@ -21,9 +21,13 @@ img_subset = imgaussfilt(img_subset, 3);
 
 cscan = reshape(img_subset, [512, bscanSize, N]);
 
+figure
+colormap gray
+imagesc(cscan(:,:,5))
+
 %[X Y] = pol2cart( cscan(:,:,2));
 %S = surf(X,Y,ones(size(X))); 
-S = PolarToIm(cscan(:,:,2), 0, 511, 512, 512); 
+S = PolarToIm(cscan(:,:,5), 0, 1, 1024, 1024); 
 figure
 colormap gray
 %imagesc(img_subset)

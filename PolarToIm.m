@@ -23,7 +23,7 @@ delT = 2*pi/N;
 for xi = 1:Mr
 for yi = 1:Nr
     x = (xi - Om)/sx;
-    y = (yi - On)/sx;
+    y = (yi - On)/sy;
     r = sqrt(x*x + y*y);
     if r >= rMin & r <= rMax
        t = atan2(y, x);
