@@ -25,16 +25,14 @@ I = P(:,:,7);
 I(1:224,:) = 0;
 
 
-thr = 200; %Grenzwert für den Threshold definiert
-%Threshold bei thr bei K
-I(I < thr) = 0;
-I(I > thr) = 1;
+img_edge = edge(I, "Sobel", "horizontal");
+%img_edge(img_edge) = 255;
 %morphological operator "open"
 se = strel('cube',5);
 se2 = strel('cube',5)
 se3 = strel('cube',10)
 se4 = strel('cube',15)
-K = imopen(I,se);
+K = imopen(img_edge,se);
 J = imclose(K,se2);
 L = imclose(K,se3);
 M = imclose(K,se4);
