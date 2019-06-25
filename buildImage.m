@@ -1,3 +1,4 @@
+close all
 img = mscan;
 
 %img_subset = img(:, 1:10:1339450);
@@ -9,7 +10,7 @@ revTime = (1/8.75);
 bscanSize = round(revTime / xTime);
 fclose(fileID);
 
-N = 20;
+N = 6;
 img_subset = img(:, 600001:(600000 + N*bscanSize));
 
 % remove line artifact
@@ -32,11 +33,39 @@ img_subset = imgaussfilt(img_subset, 3);
 
 cscan = reshape(img_subset, [512, bscanSize, N]);
 
-R = 4;
+
+cscan_polar = zeros(1024, 1024, size(cscan, 3));
+ellipse_z = zeros(size(cscan, 3), 2);
+ellipse_a = zeros(size(cscan, 3));
+ellipse_b = zeros(size(cscan, 3));
+ellipse_alpha = zeros(size(cscan, 3));
+
+for i = 1:size(cscan, 3)
+    img_smoothed = imgaussfilt(cscan(150:512,:,i), 8);
+    %img_edge = int8(edge(img_smoothed, "Sobel", 1.2));
+    img_edge = int8(edge(img_smoothed, "Canny", 0.35));
+    img_edge_polar = int8(PolarToIm(img_edge, 150/512, 1, 1024, 1024));
+    [r,c] = find(img_edge_polar);
+    [z, a, b, alpha] = fitellipse([c,r], 'linear', 'constraint', 'trace');
+    ellipse_z(i,:) = z;
+    ellipse_a(i) = a;
+    ellipse_b(i) = b;
+    ellipse_alpha(i) = alpha;
+    cscan_polar(:,:,i) = PolarToIm(cscan(:,:,i), 0, 1, 1024, 1024);
+end
+
+R = 2;
 
 figure
 colormap gray
-imagesc(cscan(150:512,:,R))
+imagesc(cscan(:,:,R))
+
+figure
+hold on
+colormap gray
+imagesc(cscan_polar(:,:,R))
+plotellipse(ellipse_z(R,:), ellipse_a(R), ellipse_b(R), ellipse_alpha(R));
+hold off
 
 %max = 0;
 %for i = height(img_subset(150, :))
@@ -46,26 +75,28 @@ imagesc(cscan(150:512,:,R))
 %    if max > 200 
 %        break;
 %    end    
-%end    
+%end  
 
-img_edge = edge(imgaussfilt(cscan(150:512,:,R), 5), "Canny", 0.3);
-img_edge_int = int8(img_edge);
-img_edge_int(img_edge) = 255;
+
+
+
+img_smoothed = imgaussfilt(cscan(150:512,:,R), 8);
+%img_edge = int8(edge(img_smoothed, "Sobel", 1.2));
+img_edge = int8(edge(img_smoothed, "Canny", 0.35));
 figure
 colormap gray
-imagesc(img_edge_int)
+imagesc(img_smoothed)
+hold on
+[r1,c1] = find(img_edge);
+plot(c1,r1, 'r.');
+hold off
 
-img_edge_polar = PolarToIm(img_edge_int, 150/512, 1, 1024, 1024);
+img_edge_polar = int8(PolarToIm(img_edge, 150/512, 1, 1024, 1024));
+%img_edge_polar(img_edge_polar < 200) = 0;
+%img_edge_polar(img_edge_polar >= 1) = 255;
 
 [r,c] = find(img_edge_polar);
-%[z, a, b, alpha] = fitellipse([r,c]);
-
-figure
-plot([r,c], 'ro');
-
-figure
-colormap gray
-imagesc(img_edge_polar)
+[z, a, b, alpha] = fitellipse([c,r], 'linear', 'constraint', 'trace');
 
 %[X Y] = pol2cart( cscan(:,:,2));
 %S = surf(X,Y,ones(size(X))); 
@@ -73,4 +104,8 @@ S = PolarToIm(cscan(:,:,R), 0, 1, 1024, 1024);
 figure
 colormap gray
 imagesc(S)
+hold on
+plotellipse(z,a,b,alpha);
+plot(c,r, 'r.');
+hold off
 
