@@ -45,7 +45,7 @@ function v = interpolate (imP, r, t, rMin, rMax, M, N, delR, delT)
     if tc > N
         tc = tf;
     end
-    if rf == rc & tc == tf
+    if rf == rc && tc == tf
         v = imP (rc, tc);
     elseif rf == rc
         v = imP (rf, tf) + (ti - tf)*(imP (rf, tc) - imP (rf, tf));
