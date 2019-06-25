@@ -1,38 +1,36 @@
 close all
-img = mscan;
-
-%img_subset = img(:, 1:10:1339450);
 
 fileID = fopen('data/oct_timestamp_1.bin');
-A = fread(fileID, Inf, 'uint64');
-xTime = (A(end) - A(1)) / (size(A, 1)) / 50 / 1000; %seconds per A-scan
+timestamps = fread(fileID, Inf, 'uint64');
+xTime = (timestamps(end) - timestamps(1)) / (size(timestamps, 1)) / 50 / 1000; %seconds per A-scan
 revTime = (1/8.75);
 bscanSize = round(revTime / xTime);
 fclose(fileID);
 
-N = 6;
-img_subset = img(:, 600001:(600000 + N*bscanSize));
+figure
+colormap gray
+imagesc(mscan)
+
+start_index = 650001;
+end_index = 950000;
+bscan_count = floor((end_index - start_index) / bscanSize);
+mscan_subset = mscan(:, start_index:(start_index - 1 + bscan_count * bscanSize));
+
+figure
+colormap gray
+imagesc(mscan_subset)
 
 % remove line artifact
-for i = 1:length(img_subset)
-    col = img_subset(215:230, i);
+for i = 1:length(mscan_subset)
+    col = mscan_subset(215:230, i);
     above_mean = mean(col(1:5));
     below_mean = mean(col(11:15));
     col(6:10) = (above_mean + below_mean) / 2;
-    img_subset(215:230, i) = col;
+    mscan_subset(215:230, i) = col;
 end    
 
-%img_subset(1:150, :) = mean(mean(img_subset(1:100, :)));
-
-%img_subset = wiener2(img_subset, [5 5]);
-img_subset = imgaussfilt(img_subset, 3);
-%img_subset(210:235, :) = medfilt2(img_subset(210:235, :));
-
-%img_subset(img_subset < 200) = 0;
-%img_subset(img_subset >= 200) = 1;
-
-cscan = reshape(img_subset, [512, bscanSize, N]);
-
+cscan = reshape(mscan_subset, [512, bscanSize, bscan_count]);
+clearvars mscan_subset
 
 cscan_polar = zeros(1024, 1024, size(cscan, 3));
 ellipse_z = zeros(size(cscan, 3), 2);
@@ -40,72 +38,41 @@ ellipse_a = zeros(size(cscan, 3));
 ellipse_b = zeros(size(cscan, 3));
 ellipse_alpha = zeros(size(cscan, 3));
 
+R = 2;
+
 for i = 1:size(cscan, 3)
-    img_smoothed = imgaussfilt(cscan(150:512,:,i), 8);
-    %img_edge = int8(edge(img_smoothed, "Sobel", 1.2));
-    img_edge = int8(edge(img_smoothed, "Canny", 0.35));
-    img_edge_polar = int8(PolarToIm(img_edge, 150/512, 1, 1024, 1024));
-    [r,c] = find(img_edge_polar);
+    cscan(:,:,i) = imgaussfilt(cscan(:,:,i), 3);
+    bscan_smoothed = imgaussfilt(cscan(150:512,:,i), 8);
+    %mscan_edge = int8(edge(mscan_smoothed, "Sobel", 1.2));
+    bscan_edge = edge(bscan_smoothed, "Canny", 0.35);
+    bscan_edge_polar = int8(Polar2Im([zeros(149, bscanSize) ; bscan_edge], 1024, "linear"));
+    [r,c] = find(bscan_edge_polar);
     [z, a, b, alpha] = fitellipse([c,r], 'linear', 'constraint', 'trace');
     ellipse_z(i,:) = z;
     ellipse_a(i) = a;
     ellipse_b(i) = b;
     ellipse_alpha(i) = alpha;
-    cscan_polar(:,:,i) = PolarToIm(cscan(:,:,i), 0, 1, 1024, 1024);
+    cscan_polar(:,:,i) = Polar2Im(cscan(:,:,i), 1024, "linear");
 end
 
-R = 2;
+clearvars bscan_smoothed bscan_edge bscan_edge_polar
+
 
 figure
 colormap gray
 imagesc(cscan(:,:,R))
 
+%figure
+%colormap gray
+%imagesc(PolarToIm(cscan(:,:,R), 0, 1, 1024, 1024));
+
 figure
-hold on
 colormap gray
 imagesc(cscan_polar(:,:,R))
+hold on
 plotellipse(ellipse_z(R,:), ellipse_a(R), ellipse_b(R), ellipse_alpha(R));
 hold off
 
-%max = 0;
-%for i = height(img_subset(150, :))
-%    row = img_subset(150+i, :);
-%    max = max(row);
-%    
-%    if max > 200 
-%        break;
-%    end    
-%end  
 
 
-
-
-img_smoothed = imgaussfilt(cscan(150:512,:,R), 8);
-%img_edge = int8(edge(img_smoothed, "Sobel", 1.2));
-img_edge = int8(edge(img_smoothed, "Canny", 0.35));
-figure
-colormap gray
-imagesc(img_smoothed)
-hold on
-[r1,c1] = find(img_edge);
-plot(c1,r1, 'r.');
-hold off
-
-img_edge_polar = int8(PolarToIm(img_edge, 150/512, 1, 1024, 1024));
-%img_edge_polar(img_edge_polar < 200) = 0;
-%img_edge_polar(img_edge_polar >= 1) = 255;
-
-[r,c] = find(img_edge_polar);
-[z, a, b, alpha] = fitellipse([c,r], 'linear', 'constraint', 'trace');
-
-%[X Y] = pol2cart( cscan(:,:,2));
-%S = surf(X,Y,ones(size(X))); 
-S = PolarToIm(cscan(:,:,R), 0, 1, 1024, 1024); 
-figure
-colormap gray
-imagesc(S)
-hold on
-plotellipse(z,a,b,alpha);
-plot(c,r, 'r.');
-hold off
 
