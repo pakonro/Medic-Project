@@ -26,15 +26,18 @@ fileID_Bin = fopen('oct_final.bin');
 %1024 Werte repräsentieren einen A-Scan
 
 %scanCount represäntiert die Anzahl der A-Scans
-scanCount = 1000000;
+scanCount = 500000;
 
 A = fread(fileID_Bin, 1024*scanCount,'uint16');
 
+
 A = reshape(A,[1024,scanCount]);
+
 
 %Die Werte müssen mit der Zahl 540 multipliziert werden
 %(ADC-Ticks zu physikalischer Größe)
 A = A*540;
+
 %Jeder Sensor hat einen konstanten Offset (B)
 B = load('Offset.txt');
 
@@ -43,12 +46,14 @@ B = ones(1024,scanCount).*B;
 %Der Offset wird abgezogen
 A = A - B;
 
+
 clearvars B;
 
 %DC: Der "Direct Current" stellt das Spektrum der Lichtquelle da
 dcTerm = mean(A,2);
-
 A = A - dcTerm;
+
+
 
 %Die Lichtquelle sendet keine linear verteilte Wellenlängen
 Chirp = load('Chirp.txt');
@@ -72,20 +77,21 @@ clearvars C
 
 %Die Fouriertransformation liefert ein komplexes Signal
 E=fft(D,1024);
-
 clearvars D
 
 %Der Betrag von E zeigt die Intensität 
 %zu den unterschiedlichen Distanzen "z"
 
 %Signal-Kompression: 20*log(X)
-E = real(20*log(E(1:floor(size(E,1)/2),:)));
+Result = real(20*log(E(1:floor(size(E,1)/2),:)));
 
-%plot(E)
-imagesc(E);
+compData = Result(:,1:100:end);
+save('editData_1mil.mat','compData');
+
+imagesc(compData);
 
 colormap gray
 
 
-    
+  
     
